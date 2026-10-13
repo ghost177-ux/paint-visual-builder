@@ -12,6 +12,6 @@ export const demoDocument: EditorDocument = {
   ],
   comments: [
     { id: "c1", elementId: "cta", author: "Rafa", body: "Testar uma cor mais escura no hover.", createdAt: "há 2h" },
-    { id: "c2", elementId: "cta", author: "Ana", body: "Texto do botão aprovado ✅", createdAt: "há 40min" },
+    { id: "c2", elementId: "cta", author: "Ana", body: "Texto do botão aprovado.", createdAt: "há 40min" },
   ],
 };
