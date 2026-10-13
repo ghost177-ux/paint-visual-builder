@@ -1,5 +1,9 @@
 import "@testing-library/jest-dom/vitest";
 
+if (!window.PointerEvent) {
+  Object.defineProperty(window, "PointerEvent", { value: MouseEvent });
+}
+
 Object.defineProperty(window, "scrollTo", {
   writable: true,
   value: () => {},
