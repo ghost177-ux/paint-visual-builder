@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Editor UI lives in src/components/editor (one component per panel, shared types in types.ts) so future drag/resize/layers/JSON features plug into a single EditorDocument model.
