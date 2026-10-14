@@ -4,16 +4,16 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   elements: EditorElement[];
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
+  selectedIds: string[];
+  onSelect: (id: string | null, mode?: "replace" | "toggle" | "remove") => void;
+  onMoveSelection: (dx: number, dy: number) => void;
   onUpdate: (id: string, changes: Partial<EditorElement>) => void;
   onCreateRectangle: (x: number, y: number) => void;
   tool: ToolId;
   zoom: number;
   device: DeviceMode;
+  viewportWidth: number;
 }
-
-const PAGE_WIDTH: Record<DeviceMode, number> = { desktop: 1200, mobile: 390 };
 
 type ResizeHandle = "nw" | "ne" | "sw" | "se";
 type Interaction = {
@@ -25,19 +25,24 @@ type Interaction = {
   width: number;
   height: number;
   handle: ResizeHandle | null;
+  selectedIds: string[];
 };
 
 function ElementNode({
   el,
   selected,
+  selectedIds,
   zoom,
   onSelect,
+  onMoveSelection,
   onUpdate,
 }: {
   el: EditorElement;
   selected: boolean;
+  selectedIds: string[];
   zoom: number;
-  onSelect: () => void;
+  onSelect: (id: string | null, mode?: "replace" | "toggle" | "remove") => void;
+  onMoveSelection: (dx: number, dy: number) => void;
   onUpdate: (id: string, changes: Partial<EditorElement>) => void;
 }) {
   const interaction = useRef<Interaction | null>(null);
@@ -47,7 +52,16 @@ function ElementNode({
   const startInteraction = (event: React.PointerEvent, handle: ResizeHandle | null) => {
     event.stopPropagation();
     if (event.button !== 0) return;
-    onSelect();
+
+    if (event.shiftKey) {
+      onSelect(el.id, "toggle");
+      return;
+    }
+
+    const nextSelectedIds = selectedIds.includes(el.id) ? selectedIds : [el.id];
+    if (!selected) {
+      onSelect(el.id, "replace");
+    }
     if (!canEdit) return;
 
     interaction.current = {
@@ -59,6 +73,7 @@ function ElementNode({
       width: el.width,
       height: el.height,
       handle,
+      selectedIds: nextSelectedIds,
     };
     if (typeof event.currentTarget.setPointerCapture === "function") {
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -72,7 +87,11 @@ function ElementNode({
     const dx = (event.clientX - start.pointerX) / (zoom / 100);
     const dy = (event.clientY - start.pointerY) / (zoom / 100);
     if (!start.handle) {
-      onUpdate(start.id, { x: start.x + dx, y: start.y + dy });
+      if (start.selectedIds.length > 1) {
+        onMoveSelection(dx, dy);
+      } else {
+        onUpdate(start.id, { x: start.x + dx, y: start.y + dy });
+      }
       return;
     }
 
@@ -151,15 +170,17 @@ function ElementNode({
 
 export function CanvasWorkspace({
   elements,
-  selectedId,
+  selectedIds,
   onSelect,
+  onMoveSelection,
   onUpdate,
   onCreateRectangle,
   tool,
   zoom,
   device,
+  viewportWidth,
 }: Props) {
-  const width = PAGE_WIDTH[device];
+  const width = device === "desktop" ? viewportWidth : 390;
   const visible = device === "desktop" ? elements.filter((element) => element.visible) : [];
 
   const onPagePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -172,7 +193,7 @@ export function CanvasWorkspace({
         Math.max(0, (event.clientY - bounds.top) / scale),
       );
     } else if (tool === "select") {
-      onSelect(null);
+      onSelect(null, "replace");
     }
   };
 
@@ -181,7 +202,7 @@ export function CanvasWorkspace({
       <div className="flex min-h-full min-w-max justify-center p-16">
         <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}>
           <div className="mb-2 text-xs font-medium text-muted-foreground">
-            {device === "desktop" ? "Desktop — 1200px" : "Mobile — 390px"}
+            {device === "desktop" ? `Desktop — ${width}px` : "Mobile — 390px"}
           </div>
           <div
             className="editor-page relative"
@@ -192,9 +213,11 @@ export function CanvasWorkspace({
               <ElementNode
                 key={el.id}
                 el={el}
-                selected={el.id === selectedId}
+                selected={selectedIds.includes(el.id)}
+                selectedIds={selectedIds}
                 zoom={zoom}
-                onSelect={() => onSelect(el.id)}
+                onSelect={onSelect}
+                onMoveSelection={onMoveSelection}
                 onUpdate={onUpdate}
               />
             ))}
